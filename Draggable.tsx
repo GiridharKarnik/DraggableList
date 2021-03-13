@@ -11,14 +11,18 @@ import Animated, {
   useAnimatedGestureHandler,
   useAnimatedStyle,
   useSharedValue,
+  withTiming,
 } from 'react-native-reanimated';
 
 interface DraggableProps {
   scrollRef: MutableRefObject<any>;
+  colour: string;
 }
 
-const Draggable: React.FC<DraggableProps> = ({scrollRef}) => {
+const Draggable: React.FC<DraggableProps> = ({scrollRef, colour}) => {
   const longPressRef = useRef();
+
+  const beingDragged = useSharedValue<boolean>(false);
 
   const transY = useSharedValue(0);
 
@@ -26,7 +30,7 @@ const Draggable: React.FC<DraggableProps> = ({scrollRef}) => {
     nativeEvent,
   }: LongPressGestureHandlerGestureEvent) => {
     if (nativeEvent.state === State.ACTIVE) {
-      Alert.alert("I'm being pressed for so long");
+      //   Alert.alert("I'm being pressed for so long");
     }
   };
 
@@ -47,28 +51,48 @@ const Draggable: React.FC<DraggableProps> = ({scrollRef}) => {
     onEnd: (event) => {},
   });
 
+  const longPressGestureHandler = useAnimatedGestureHandler<
+    LongPressGestureHandlerGestureEvent,
+    AnimatedGHContext
+  >({
+    onActive: (event, ctx) => {
+      beingDragged.value = true;
+      //   transY.value = ctx.startY + event.translationY;
+    },
+    onEnd: (event) => {
+      beingDragged.value = false;
+    },
+    onCancel: () => {
+      beingDragged.value = false;
+    },
+  });
+
   const stylez = useAnimatedStyle(() => {
     return {
+      backgroundColor: colour,
+      zIndex: beingDragged.value ? 99 : 0,
       transform: [
         {
           translateY: transY.value,
+        },
+        {
+          scale: withTiming(beingDragged.value ? 1.1 : 1),
         },
       ],
     };
   });
 
   return (
-    <PanGestureHandler onGestureEvent={panGestureHandler} waitFor={scrollRef}>
+    <LongPressGestureHandler
+      ref={longPressRef}
+      onGestureEvent={longPressGestureHandler}
+      maxDist={100000}
+      shouldCancelWhenOutside={false}
+      onHandlerStateChange={handleLongPress}>
       <Animated.View style={[styles.rowContainer, stylez]}>
-        <LongPressGestureHandler
-          ref={longPressRef}
-          onHandlerStateChange={handleLongPress}>
-          <View>
-            <Text style={styles.text}>Draggable</Text>
-          </View>
-        </LongPressGestureHandler>
+        <Text style={styles.text}>Draggable</Text>
       </Animated.View>
-    </PanGestureHandler>
+    </LongPressGestureHandler>
   );
 };
 
