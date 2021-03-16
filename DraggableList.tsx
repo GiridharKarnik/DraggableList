@@ -52,12 +52,6 @@ const DraggableList = () => {
     console.log(`scroll offset, ${scrollY.value}`);
   };
 
-  // const onScroll = useAnimatedScrollHandler({
-  //   onScroll: ({contentOffset: {y}}) => {
-  //     scrollY.value = y;
-  //   },
-  // });
-
   return (
     <ScrollView
       ref={scrollRef}

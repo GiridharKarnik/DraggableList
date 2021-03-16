@@ -65,9 +65,6 @@ const Draggable: React.FC<DraggableProps> = ({
 
   const position = getPosition(positions.value[colour]!);
   const translateY = useSharedValue(position.y);
-  //
-  // console.log(`lowerBound ${lowerBound}`);
-  // console.log(`upperBound ${upperBound}`);
 
   useAnimatedReaction(
     () => positions.value[colour]!,
@@ -84,20 +81,11 @@ const Draggable: React.FC<DraggableProps> = ({
     {y: number}
   >({
     onStart: (_, context) => {
-      // console.log(`panning , ${translateY.value} `);
-      // // if (beingDragged.value) {
-      // console.log(`translateY.value ${translateY.value}`);
       context.y = translateY.value;
-      // }
     },
     onActive: ({translationY}, ctx) => {
-      // console.log(
-      //   `beingDragged ${beingDragged.value}, scrollEnabled ${scrollEnabled.value}`,
-      // );
       if (beingDragged.value && !scrollEnabled.value) {
         translateY.value = ctx.y + translationY;
-        // console.log(`ctx.y ${ctx.y}, translationY ${translationY}`);
-        // console.log(`panned ${translateY.value}`);
         // 1. We calculate where the tile should be
         const newOrder = getOrder(
           translateY.value,
@@ -200,7 +188,6 @@ const Draggable: React.FC<DraggableProps> = ({
           <LongPressGestureHandler
             ref={longPressRef}
             simultaneousHandlers={panRef}
-            // onGestureEvent={longPressGestureHandler}
             maxDist={100000}
             shouldCancelWhenOutside={false}
             onHandlerStateChange={handleLongPress}>
