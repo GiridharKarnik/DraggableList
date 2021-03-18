@@ -1,5 +1,5 @@
-import React, { MutableRefObject, ReactNode, useRef } from "react";
-import {Dimensions, StyleSheet, Text} from 'react-native';
+import React, { MutableRefObject, ReactNode, useRef } from 'react';
+import { StyleSheet } from 'react-native';
 import {
   LongPressGestureHandler,
   PanGestureHandler,
@@ -7,17 +7,15 @@ import {
   State,
 } from 'react-native-gesture-handler';
 import Animated, {
-  Easing,
   runOnJS,
   scrollTo,
   useAnimatedGestureHandler,
   useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
+  withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import {ViewMeasurements} from './useComponentSize';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {
   animationConfig,
   getOrder,
@@ -29,44 +27,38 @@ import {
 interface DraggableProps {
   children: ReactNode;
   scrollRef: MutableRefObject<any>;
-  dataSize: number;
+  id: string | number;
   positions: Animated.SharedValue<Positions>;
-  size: ViewMeasurements;
+  containerHeight: Animated.SharedValue<number>;
   scrollY: Animated.SharedValue<number>;
   scrollEnabled: Animated.SharedValue<boolean>;
-}
-
-const ROW_HEIGHT = 100;
-
-interface DraggableHandle {
-  translate: (translateBy: number) => void;
+  onDragEnd: (diffs: Positions) => void;
 }
 
 const Draggable: React.FC<DraggableProps> = ({
+  children,
   scrollRef,
-  dataSize,
-  colour,
-  index,
+  id,
   scrollY,
   positions,
   scrollEnabled,
+  containerHeight,
+  onDragEnd,
 }) => {
   const longPressRef = useRef();
   const panRef = useRef();
 
   const beingDragged = useSharedValue<boolean>(false);
 
-  const inset = useSafeAreaInsets();
-  const containerHeight =
-    Dimensions.get('window').height - inset.top - inset.bottom;
-  const contentHeight = Object.keys(positions.value).length * SIZE;
-  const isGestureActive = useSharedValue(false);
+  console.log(`container Height ${containerHeight.value}`);
 
-  const position = getPosition(positions.value[colour]!);
+  const contentHeight = Object.keys(positions.value).length * SIZE;
+
+  const position = getPosition(positions.value[id]!);
   const translateY = useSharedValue(position.y);
 
   useAnimatedReaction(
-    () => positions.value[colour]!,
+    () => positions.value[id]!,
     (newOrder) => {
       if (!beingDragged.value) {
         const pos = getPosition(newOrder);
@@ -77,12 +69,12 @@ const Draggable: React.FC<DraggableProps> = ({
 
   const panGestureEventHandler = useAnimatedGestureHandler<
     PanGestureHandlerGestureEvent,
-    {y: number}
+    { y: number }
   >({
     onStart: (_, context) => {
       context.y = translateY.value;
     },
-    onActive: ({translationY}, ctx) => {
+    onActive: ({ translationY }, ctx) => {
       if (beingDragged.value && !scrollEnabled.value) {
         translateY.value = ctx.y + translationY;
         // 1. We calculate where the tile should be
@@ -92,7 +84,7 @@ const Draggable: React.FC<DraggableProps> = ({
         );
 
         // 2. We swap the positions
-        const oldOlder = positions.value[colour];
+        const oldOlder = positions.value[id];
         if (newOrder !== oldOlder) {
           const idToSwap = Object.keys(positions.value).find(
             (key) => positions.value[key] === newOrder,
@@ -101,7 +93,7 @@ const Draggable: React.FC<DraggableProps> = ({
             // Spread operator is not supported in worklets
             // And Object.assign doesn't seem to be working on alpha.6
             const newPositions = JSON.parse(JSON.stringify(positions.value));
-            newPositions[colour] = newOrder;
+            newPositions[id] = newOrder;
             newPositions[idToSwap] = oldOlder;
             positions.value = newPositions;
           }
@@ -109,8 +101,8 @@ const Draggable: React.FC<DraggableProps> = ({
 
         // 3. Scroll up and down if necessary
         const lowerBound = scrollY.value;
-        const upperBound = lowerBound + containerHeight - SIZE;
-        const maxScroll = contentHeight - containerHeight;
+        const upperBound = lowerBound + containerHeight.value - SIZE;
+        const maxScroll = contentHeight - containerHeight.value;
         const leftToScrollDown = maxScroll - scrollY.value;
 
         console.log(
@@ -142,15 +134,18 @@ const Draggable: React.FC<DraggableProps> = ({
       }
     },
     onEnd: () => {
-      const newPosition = getPosition(positions.value[colour]!);
-      translateY.value = withTiming(newPosition.y, animationConfig);
+      const newPosition = getPosition(positions.value[id]!);
+      translateY.value = withTiming(newPosition.y, animationConfig, () => {
+        runOnJS(onDragEnd)(positions.value);
+      });
     },
   });
 
-  const handleLongPress = ({nativeEvent}: any) => {
+  const handleLongPress = ({ nativeEvent }: any) => {
+    console.log('pressed');
+
     if (nativeEvent.state === State.ACTIVE) {
       beingDragged.value = true;
-      // console.log('being dragged');
     } else if (
       nativeEvent.state === State.END ||
       nativeEvent.state === State.CANCELLED
@@ -160,38 +155,35 @@ const Draggable: React.FC<DraggableProps> = ({
   };
 
   const stylez = useAnimatedStyle(() => {
-    const zIndex = beingDragged.value ? 99 : 0;
-    const scale = withTiming(beingDragged.value ? 1.1 : 1);
+    const zIndex = beingDragged.value ? 100 : 0;
+    const scale = withSpring(beingDragged.value ? 1.05 : 1);
     return {
       position: 'absolute',
-      backgroundColor: colour,
+      top: 0,
+      left: 0,
+      width: 100,
+      height: 140,
       zIndex,
-      transform: [
-        {
-          translateY: translateY.value,
-        },
-        {scale},
-      ],
+      transform: [{ translateY: translateY.value }, { scale }],
     };
   });
 
   return (
-    <Animated.View
-      style={[styles.rowContainer, {backgroundColor: colour}, stylez]}>
+    <Animated.View style={stylez}>
       <PanGestureHandler
         ref={panRef}
         waitFor={[scrollRef]}
         simultaneousHandlers={[scrollRef, longPressRef]}
         onGestureEvent={panGestureEventHandler}>
-        <Animated.View style={[StyleSheet.absoluteFill]}>
+        <Animated.View style={StyleSheet.absoluteFill}>
           <LongPressGestureHandler
             ref={longPressRef}
             simultaneousHandlers={panRef}
             maxDist={100000}
             shouldCancelWhenOutside={false}
             onHandlerStateChange={handleLongPress}>
-            <Animated.View style={[StyleSheet.absoluteFill]}>
-              <Text style={styles.text}>{index + 1}</Text>
+            <Animated.View style={StyleSheet.absoluteFill}>
+              {children}
             </Animated.View>
           </LongPressGestureHandler>
         </Animated.View>
@@ -199,25 +191,5 @@ const Draggable: React.FC<DraggableProps> = ({
     </Animated.View>
   );
 };
-
-const styles = StyleSheet.create({
-  rowContainer: {
-    backgroundColor: 'green',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    height: 100,
-    width: '100%',
-  },
-  innerContainer: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  text: {
-    fontSize: 25,
-    color: 'white',
-  },
-});
 
 export default Draggable;

@@ -1,11 +1,11 @@
-import {Easing} from 'react-native-reanimated';
+import { Easing } from 'react-native-reanimated';
 
 export interface Positions {
   [id: string]: number;
 }
 
-export const MARGIN = 8;
-export const SIZE = 100;
+//TODO: Remove hardcoded height
+export const SIZE = 140;
 
 export const animationConfig = {
   easing: Easing.inOut(Easing.ease),
