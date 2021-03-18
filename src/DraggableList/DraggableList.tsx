@@ -1,91 +1,81 @@
-import React from 'react';
-import {NativeScrollEvent, NativeSyntheticEvent} from 'react-native';
-
-import useComponentSize, {ViewMeasurements} from './useComponentSize';
+import React, { ReactElement } from 'react';
+import { ScrollView } from 'react-native-gesture-handler';
 import Draggable from './Draggable';
 import Animated, {
   useAnimatedRef,
   useSharedValue,
 } from 'react-native-reanimated';
-import {ScrollView} from 'react-native-gesture-handler';
-import {Positions} from './Config';
+import useComponentSize, { ViewMeasurements } from './useComponentSize';
+import { Positions, SIZE } from './Config';
+import { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 
-const data = [
-  '#02B9E3',
-  '#1DAB1E',
-  '#698C85',
-  '#EB9042',
-  '#528F4D',
-  '#E777C0',
-  '#6DDCDC',
-  '#1FA79C',
-  '#076C69',
-  '#9CC278',
-  '#D92749',
-  '#3B8FD5',
-  '#8FE4C5',
-  '#AA1FB3',
-  '#2FFCB2',
-  '#AFE450',
-  '#6CAFF0',
-  '#CA7A00',
-  '#C8EE81',
-  '#9DFE94',
-];
+interface DraggableListProps {
+  children: Array<ReactElement<{ id: string }>>;
+  onDragEnd: (diffs: Positions) => void;
+}
 
-const DraggableList = () => {
+const DraggableList: React.FC<DraggableListProps> = ({
+  children,
+  onDragEnd,
+}) => {
   const scrollEnabled = useSharedValue<boolean>(false);
   const scrollRef: any = useAnimatedRef<Animated.ScrollView>();
   const scrollY = useSharedValue(0);
+
+  const containerHeight = useSharedValue<number>(0);
 
   const [size, onLayout]: [
     ViewMeasurements | undefined,
     any,
   ] = useComponentSize();
 
+  if (size) {
+    containerHeight.value = size.height;
+  }
+
+  console.log(JSON.stringify(size));
+
   const positions = useSharedValue<Positions>(
-    Object.assign({}, ...data.map((colour, index) => ({[colour]: index}))),
+    Object.assign(
+      {},
+      ...children.map((child, index) => ({ [child.props.id]: index })),
+    ),
   );
 
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     scrollY.value = event.nativeEvent.contentOffset.y;
-    console.log(`scroll offset, ${scrollY.value}`);
   };
 
   return (
     <ScrollView
       ref={scrollRef}
-      // style={styles.list}
       onScroll={onScroll}
       contentContainerStyle={{
-        height: data.length * 100,
+        height: children.length * SIZE,
       }}
       onScrollBeginDrag={() => {
-        console.log('scroll drag started');
         scrollEnabled.value = true;
       }}
       onScrollEndDrag={() => {
-        console.log('scroll drag ended');
         scrollEnabled.value = false;
       }}
       showsVerticalScrollIndicator={false}
       bounces={false}
       scrollEventThrottle={16}
       onLayout={onLayout}>
-      {data.map((x, index) => {
+      {children.map((child) => {
         return (
           <Draggable
-            // @ts-ignore
-            size={size}
-            dataSize={data.length}
+            containerHeight={containerHeight}
+            key={child.props.id}
+            id={child.props.id}
             scrollRef={scrollRef}
-            colour={x}
-            key={x}
-            index={index}
             scrollY={scrollY}
             positions={positions}
             scrollEnabled={scrollEnabled}
-          />
+            onDragEnd={onDragEnd}>
+            {child}
+          </Draggable>
         );
       })}
     </ScrollView>

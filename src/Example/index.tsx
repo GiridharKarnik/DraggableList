@@ -1,7 +1,6 @@
 import React from 'react';
-import {Image, StyleSheet, Text, View} from 'react-native';
-import DraggableList from '../DraggableList_lib/DraggableList';
-import {ScrollView} from 'react-native-gesture-handler';
+import { Image, StyleSheet, Text, View } from 'react-native';
+import DraggableList, { Positions } from '../DraggableList';
 
 const data = [
   {
@@ -86,34 +85,48 @@ const data = [
   },
 ];
 
-const ExampleList: React.FC = () => {
+interface RowItemProps {
+  id: string | number;
+  name: string;
+  uri: string;
+}
+
+const RowItem: React.FC<RowItemProps> = ({ name, uri }) => {
   return (
-    <View style={styles.container}>
+    <View style={styles.rowContainer}>
+      <Image
+        style={styles.animalImage}
+        source={{
+          uri,
+        }}
+      />
+      <Text style={styles.animalName}>{name}</Text>
+    </View>
+  );
+};
+
+const ExampleList: React.FC = () => {
+  const onDragEnd = (positions: Positions) => {
+    console.log(`updated Positions, ${JSON.stringify(positions)}`);
+  };
+
+  return (
+    <View style={styles.screen}>
       <Text style={styles.introText}>Touch and hold to begin sorting</Text>
 
-      <ScrollView>
-        {data.map(({name, uri}) => {
-          return (
-            <View style={styles.rowContainer} key={name}>
-              <Image
-                style={styles.animalImage}
-                source={{
-                  uri,
-                }}
-              />
-              <Text style={styles.animalName}>{name}</Text>
-            </View>
-          );
+      <DraggableList onDragEnd={onDragEnd}>
+        {data.map(({ name, uri }) => {
+          return <RowItem id={name} key={name} name={name} uri={uri} />;
         })}
-      </ScrollView>
+      </DraggableList>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    display: 'flex',
-    alignItems: 'center',
+  screen: {
+    flex: 1,
+    width: '100%',
   },
   introText: {
     color: 'black',
@@ -121,24 +134,22 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 20,
   },
-  listContainer: {
-    height: 100,
-    width: 200,
-  },
   rowContainer: {
     width: 200,
     height: 140,
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   animalImage: {
     height: 100,
     width: 100,
-    borderRadius: 10
+    borderRadius: 10,
   },
   animalName: {
     fontSize: 16,
+  },
+  test: {
+    height: 100,
+    width: 100,
+    backgroundColor: 'grey',
   },
 });
 
